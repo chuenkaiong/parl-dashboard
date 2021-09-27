@@ -35,30 +35,61 @@ def get_mp_info():
     
   return mps
 
-mps = get_mp_info()
+"This app displays information about Parliamentary sittings from a small test sample dataset, from 13 Aug 2020 to 1 Feb 2021. More will be added in the future."
 
-# TODO: cache this? 
-for date in dates:
-  with open(f"sitting_data/{date}.json","r", encoding="utf-8") as f:
+st.markdown("## MP Attendance Metrics")
+if st.checkbox("View MP attendance metrics (requires a one-time load)"):
+  mps = get_mp_info()
+
+  # TODO: cache this? 
+  for date in dates:
+    with open(f"sitting_data/{date}.json","r", encoding="utf-8") as f:
+      data = json.load(f)
+
+      attendanceList = data["attendanceList"]
+      for mp in attendanceList:
+        name = mp["mpName"]
+        if name not in attendanceCounts:
+          attendanceCounts[name] =  [0, "NA"]
+        if mp["attendance"] == True:
+          attendanceCounts[name][0] += 1
+
+  # add MP's party affiliation to attendance count
+
+  for mpTitle in attendanceCounts:
+    for mp_details in mps:
+      if mp_details[0] in mpTitle:
+        party = mp_details[2]
+        attendanceCounts[mpTitle][1] = party
+        break
+    
+  attendance = pd.DataFrame.from_dict(attendanceCounts, orient="index", columns=[f"Sessions attended", "Party"])
+  attendance
+
+
+st.markdown("## MP participation scores by sitting and topic")
+participation_date = st.selectbox("Select sitting date to view", options=dates)
+
+with open(f"sitting_data/{participation_date}.json","r", encoding="utf-8") as f:
     data = json.load(f)
+    
+    participation_options = [(i, section["title"]) for i,section in enumerate(data["takesSectionVOList"])]
 
-    attendanceList = data["attendanceList"]
-    for mp in attendanceList:
-      name = mp["mpName"]
-      if name not in attendanceCounts:
-        attendanceCounts[name] =  [0, "NA"]
-      if mp["attendance"] == True:
-        attendanceCounts[name][0] += 1
+    participation_topic = st.selectbox("Select a topic", options=participation_options)
+    
+    
+    participation_blob = data["takesSectionVOList"]
+    soup = BeautifulSoup(data["takesSectionVOList"][participation_topic[0]]["content"], features="html.parser")
 
-# add MP's party affiliation to attendance count
+    speakerCounts = {}
 
-for mpTitle in attendanceCounts:
-  for mp_details in mps:
-    if mp_details[0] in mpTitle:
-      party = mp_details[2]
-      attendanceCounts[mpTitle][1] = party
-      break
-
-
-attendance = pd.DataFrame.from_dict(attendanceCounts, orient="index", columns=[f"Sessions", "Party"])
-attendance
+    speakerNames = soup.find_all("strong")
+    for speaker in speakerNames:
+        speaker = speaker.string.strip()
+        if speaker != "" and "Speaker" not in speaker:
+            if speaker not in speakerCounts:
+                speakerCounts[speaker] = 1
+            else:
+                speakerCounts[speaker] += 1
+    
+    st.write(pd.DataFrame.from_dict(speakerCounts, orient="index", columns=["Number of times spoken"]))
