@@ -4,7 +4,8 @@ import numpy as np
 import json
 import pandas as pd
 from bs4 import BeautifulSoup
-
+from sitting_dates import dates_2018_onwards
+dates_2018_onwards.reverse()
 st.title("STREAMLIT TESTING")
 
 dates = ['24-08-2020', '31-08-2020', '01-09-2020', '02-09-2020', '03-09-2020', '04-09-2020', '05-10-2020', '06-10-2020', '14-10-2020', '15-10-2020', '02-11-2020', '03-11-2020', '04-11-2020', '04-01-2021', '05-01-2021', '01-02-2021', '02-02-2021', '16-02-2021', '24-02-2021', '25-02-2021', '26-02-2021', '01-03-2021', '02-03-2021', '03-03-2021', '04-03-2021', '05-03-2021', '08-03-2021', '05-04-2021', '10-05-2021', '11-05-2021']
@@ -35,9 +36,8 @@ def get_mp_info():
     
   return mps
 
-"This app displays information about Parliamentary sittings from a small test sample dataset, from 13 Aug 2020 to 1 Feb 2021. More will be added in the future."
-
 st.markdown("## MP Attendance Metrics")
+"This is a summary of MP attendance for the current Parliament."
 if st.checkbox("View MP attendance metrics (requires a one-time load)"):
   mps = get_mp_info()
 
@@ -68,28 +68,32 @@ if st.checkbox("View MP attendance metrics (requires a one-time load)"):
 
 
 st.markdown("## MP participation scores by sitting and topic")
-participation_date = st.selectbox("Select sitting date to view", options=dates)
+"This section displays participation information for Parliamentary sittings from 2018. Earlier sitting dates are excluded for now due to a change in format for earlier data. Latest sitting dates may not be included."
+"A known issue is that each MP may be referred to by different titles, thus appearing as two different persons in the attendance counts."
+participation_date = st.selectbox("Select sitting date to view", options=dates_2018_onwards)
 
-with open(f"sitting_data/{participation_date}.json","r", encoding="utf-8") as f:
-    data = json.load(f)
-    
-    participation_options = [(i, section["title"]) for i,section in enumerate(data["takesSectionVOList"])]
+url = 'https://sprs.parl.gov.sg/search/getHansardReport/?sittingDate='
 
-    participation_topic = st.selectbox("Select a topic", options=participation_options)
-    
-    
-    participation_blob = data["takesSectionVOList"]
-    soup = BeautifulSoup(data["takesSectionVOList"][participation_topic[0]]["content"], features="html.parser")
+r = requests.post(url + participation_date)
+sitting = r.json()
 
-    speakerCounts = {}
+participation_options = [(i, section["title"]) for i,section in enumerate(sitting["takesSectionVOList"])]
 
-    speakerNames = soup.find_all("strong")
-    for speaker in speakerNames:
-        speaker = speaker.string.strip()
-        if speaker != "" and "Speaker" not in speaker:
-            if speaker not in speakerCounts:
-                speakerCounts[speaker] = 1
-            else:
-                speakerCounts[speaker] += 1
-    
-    st.write(pd.DataFrame.from_dict(speakerCounts, orient="index", columns=["Number of times spoken"]))
+participation_topic = st.selectbox("Select a topic", options=participation_options)
+
+
+participation_blob = sitting["takesSectionVOList"]
+soup = BeautifulSoup(sitting["takesSectionVOList"][participation_topic[0]]["content"], features="html.parser")
+
+speakerCounts = {}
+
+speakerNames = soup.find_all("strong")
+for speaker in speakerNames:
+    speaker = speaker.string.strip()
+    if speaker != "" and "Speaker" not in speaker:
+        if speaker not in speakerCounts:
+            speakerCounts[speaker] = 1
+        else:
+            speakerCounts[speaker] += 1
+
+st.write(pd.DataFrame.from_dict(speakerCounts, orient="index", columns=["Number of times spoken"]))
