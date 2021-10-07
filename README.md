@@ -6,9 +6,11 @@ Hosted at https://share.streamlit.io/chuenkaiong/parl-dashboard/main, courtesy o
 
 
 # Setup
-`conda env create -f environment.yml`
+`python3 -m venv env`
 
-`conda activate streamlit-sandbox`
+`env\Scripts\activate`
+
+`pip install -r requirements.txt`
 
 `streamlit run streamlit_app.py`
 
