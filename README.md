@@ -2,6 +2,8 @@
 
 Created with Streamlit 
 
+View at https://share.streamlit.io/chuenkaiong/parl-dashboard/main 
+
 
 # Setup 
 `conda env create -f environment.yml`
